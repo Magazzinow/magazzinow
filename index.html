@@ -100,6 +100,7 @@ select{font:inherit;font-size:17px;width:100%;min-height:50px;padding:0 10px;bor
 .avviso{display:block;width:100%;border:0;border-radius:0;text-align:left;font-weight:700;font-size:15px;padding:10px max(4vw,16px);min-height:44px}
 .avviso.giallo{background:var(--y);color:#222}.avviso.rosso{background:var(--red);color:#fff}
 .largo{width:100%;margin-top:10px}
+#avvisoSafari{font-weight:500;line-height:1.4}#avvisoSafari summary{font-weight:700;margin-top:6px;cursor:pointer;min-height:32px}#avvisoSafari ol{margin:6px 0 4px;padding-left:22px}
 .esito{font-size:16px;font-weight:700;color:var(--ok);margin:14px 0 0;min-height:4px}
 #catBox{margin-top:4px}
 .nuovo{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}
@@ -125,6 +126,11 @@ select{font:inherit;font-size:17px;width:100%;min-height:50px;padding:0 10px;bor
 <button type="button" class="imp" id="apriBk">Backup</button></header>
 <div class="test nascosto" id="prova">Versione di prova: inserisci solo dati finti.</div>
 <button type="button" id="avvisoBk" class="avviso nascosto"></button>
+<div id="avvisoSafari" class="avviso giallo nascosto" role="status">
+  <b>Stai usando l'app da Safari.</b> Qui i dati sono separati dall'app sulla Home e Safari può cancellarli.
+  <details><summary>Come installarla</summary>
+  <ol><li>Tocca <b>Condividi</b> (il quadrato con la freccia in su).</li><li>Scegli <b>Aggiungi alla schermata Home</b> → <b>Aggiungi</b>.</li><li>Apri <b>MAGAZZINOW</b> dall'icona sulla Home e usa sempre quella.</li><li>Se hai già dei dati qui: <b>Backup → Esporta</b> qui, poi <b>Backup → Importa</b> nell'app installata.</li></ol></details>
+</div>
 <div class="barra">
   <div class="cerca"><input id="cerca" type="search" placeholder="Cerca articolo, fornitore, cliente" aria-label="Cerca articolo"><button type="button" id="pulisci" class="nascosto" aria-label="Cancella ricerca">×</button></div>
   <nav class="filtri" id="filtriPosto" aria-label="Filtra per posto"></nav>
@@ -137,12 +143,21 @@ select{font:inherit;font-size:17px;width:100%;min-height:50px;padding:0 10px;bor
 
 <div class="velo" id="veloBk">
 <form id="formBk" onsubmit="return false">
-  <h3>Backup dei dati</h3>
+  <h3>Backup e sincronizzazione</h3>
   <p class="aiuto" id="bkUltimo" style="font-size:16px;color:var(--ink)"></p>
+  <p class="aiuto" id="bkMemoria"></p>
   <div class="sez">ESPORTA</div>
   <p class="aiuto">Crea un file con tutti i tuoi articoli, quantità e prezzi. Salvalo in iCloud Drive (app File) o mandalo alla tua mail.</p>
   <button type="button" class="salva largo" id="bkEsporta">Esporta backup</button>
-  <div class="sez">IMPORTA</div>
+  <div class="sez">SINCRONIZZA CON L'ALTRO DISPOSITIVO (iPhone ↔ iPad)</div>
+  <p class="aiuto">Unisce ai dati di qui quelli salvati dall'altro dispositivo, senza sostituire niente.<br>
+  <b>Come si fa:</b> 1) sul primo dispositivo <b>Esporta backup</b> in Backup Magazzino; 2) sul secondo <b>Unisci dati da file</b>, scegli quel file, poi <b>Esporta backup</b>; 3) sul primo <b>Unisci dati da file</b> e scegli il file appena creato. Ora sono uguali.</p>
+  <button type="button" class="salva largo" id="syUnisci">Unisci dati da file…</button>
+  <input type="file" id="syFile" accept=".json,application/json" class="nascosto">
+  <div id="syConferma" class="box nascosto"><h4>Confermi l'unione?</h4><p class="aiuto" id="syConfTxt" style="color:var(--ink)"></p>
+    <div class="bott"><button type="button" id="syNo">Annulla</button><button type="button" class="salva" id="sySi">Sì, unisci</button></div></div>
+  <p class="esito" id="syMsg" role="status"></p>
+  <div class="sez">IMPORTA (SOSTITUISCE TUTTO)</div>
   <p class="aiuto">Rimette nel telefono i dati di un file di backup. Prima ti chiedo conferma e salvo una copia dei dati attuali.</p>
   <button type="button" class="largo" id="bkImporta">Importa da file…</button>
   <input type="file" id="bkFile" accept=".json,application/json" class="nascosto">
@@ -408,7 +423,7 @@ function storico(){
   `<div class="box"><h4>Storico acquisti</h4>${perData(m.prezzi).reverse().map(x=>`<div class="acq"><span>${esc(dataIt(x.data))}<small>${esc(x.f||'Fornitore non indicato')}${x.ivaAgg!=null?' · IVA '+num(x.ivaAgg)+'% aggiunta':''}${x.n&&x.n!==1?` · ${euro(x.tot)} per ${num(x.n)} ${u}`:''}</small></span><b>${euro(x.p)}/${u}</b><button type="button" class="x${xConf===x.i?' conf':''}" data-i="${x.i}" aria-label="Elimina acquisto">${xConf===x.i?'Sì':'×'}</button></div>`).join('')}</div>`;
 }
 $('storico').addEventListener('click',e=>{const b=e.target.closest('.x');if(!b)return;const i=+b.dataset.i;
-  if(xConf===i){const m=dati.find(x=>x.id===modId);m.prezzi.splice(i,1);xConf=null;salva();disegna();}else xConf=i;storico();});
+  if(xConf===i){const m=dati.find(x=>x.id===modId);const tolto=m.prezzi.splice(i,1)[0];m.tolti=m.tolti||[];m.tolti.push(chiaveAcq(tolto));m.agg=adesso();xConf=null;salva();disegna();}else xConf=i;storico();});
 function calcola(){
   const u=unitaSel==='altro'?($('unitaAltro').value.trim()||'unità'):unitaSel;
   $('perqU').textContent=u;
@@ -460,6 +475,7 @@ $('nome').addEventListener('change',()=>{if(modId)return;const m=dati.find(x=>x.
 
 $('elimina').addEventListener('click',()=>{
   if(!delConf){delConf=true;$('elimina').textContent='Tocca ancora per eliminare';$('elimina').classList.add('conf');return;}
+  const via=dati.find(m=>m.id===modId);if(via){eliminati.push({id:via.id,nome:via.nome,t:adesso()});salvaElim();}
   dati=dati.filter(m=>m.id!==modId);salva();chiudi();disegna();
 });
 
@@ -506,6 +522,7 @@ $('modulo').addEventListener('submit',e=>{
   const al=aliquota();
   if(prezzo!==null)m.prezzi.push(ivaModo==='aggiungi'?{p:Math.round(prezzo*(1+al/100)*10000)/10000,data,f:forn,ivaAgg:al,netto:prezzo}:{p:prezzo,data,f:forn});
   m.posti=nuoviPosti.filter(p=>p.qta>0);
+  m.agg=adesso();
   salva();chiudi();disegna();
 });
 
@@ -634,12 +651,13 @@ function statoBk(){
   $('bkCopia').classList.toggle('nascosto',!info);
   if(info)$('bkCopiaTxt').textContent=`Copia automatica dei dati di prima dell'ultima importazione: ${info.articoli.length} articoli, del ${dataOra(info.data)}.`;
   $('bkMsg').textContent='';$('bkConferma').classList.add('nascosto');
+  $('bkMemoria').textContent=testoMemoria();
 }
 $('apriBk').addEventListener('click',()=>{statoBk();$('veloBk').classList.add('on');$('formBk').scrollTop=0;});
 $('avvisoBk').addEventListener('click',()=>$('apriBk').click());
 $('chiudiBk').addEventListener('click',()=>$('veloBk').classList.remove('on'));
 
-const pacchetto=()=>({app:'magazzino-green-art',versione:2,data:new Date().toISOString(),articoli:dati,catalogo:extra});
+const pacchetto=()=>({app:'magazzino-green-art',versione:3,data:new Date().toISOString(),articoli:dati,catalogo:extra,eliminati});
 async function esporta(){
   const nome=`magazzino-greenart-${oggi()}.json`;
   const testo=JSON.stringify(pacchetto(),null,1);
@@ -664,7 +682,7 @@ function valida(o){
   for(const m of arr){if(!m||typeof m.nome!=='string'||!Array.isArray(m.posti)||!Array.isArray(m.prezzi))return null;
     for(const p of m.posti)if(typeof p.posto!=='string'||typeof p.qta!=='number')return null;
     for(const p of m.prezzi)if(typeof p.p!=='number')return null;}
-  return {articoli:arr.map(m=>({id:String(m.id||Date.now().toString(36)+Math.random().toString(36).slice(2,6)),cat:String(m.cat||'Altro'),nome:m.nome,unita:String(m.unita||'pz'),note:String(m.note||''),posti:m.posti,prezzi:m.prezzi})),data:o.data||null,catalogo:o.catalogo&&typeof o.catalogo==='object'?{mat:o.catalogo.mat||{},opz:o.catalogo.opz||{},forn:Array.isArray(o.catalogo.forn)?o.catalogo.forn:[]}:null};
+  return {articoli:arr.map(m=>({id:String(m.id||Date.now().toString(36)+Math.random().toString(36).slice(2,6)),cat:String(m.cat||'Altro'),nome:m.nome,unita:String(m.unita||'pz'),note:String(m.note||''),posti:m.posti,prezzi:m.prezzi,...(m.mat!==undefined?{mat:m.mat}:{}),...(m.agg?{agg:String(m.agg)}:{}),...(Array.isArray(m.tolti)?{tolti:m.tolti}:{})})),data:o.data||null,eliminati:Array.isArray(o.eliminati)?o.eliminati.filter(t=>t&&t.id&&t.t):[],catalogo:o.catalogo&&typeof o.catalogo==='object'?{mat:o.catalogo.mat||{},opz:o.catalogo.opz||{},forn:Array.isArray(o.catalogo.forn)?o.catalogo.forn:[]}:null};
 }
 let daImportare=null;
 $('bkImporta').addEventListener('click',()=>{$('bkFile').value='';$('bkFile').click();});
@@ -686,7 +704,7 @@ $('bkSi').addEventListener('click',()=>{
   if(!daImportare)return;
   if(!lsSet(KEY_COPIA,JSON.stringify({data:new Date().toISOString(),articoli:dati}))){$('bkMsg').textContent='Non riesco a fare la copia di sicurezza (memoria piena?). Importazione annullata.';return;}
   const n=daImportare.articoli.length;
-  dati=daImportare.articoli;if(daImportare.catalogo){extra=daImportare.catalogo;salvaExtra();}daImportare=null;salva();disegna();statoBk();promemoria();
+  dati=daImportare.articoli;for(const m of dati)if(m.mat===undefined)m.mat=deduciMat(m.cat,m.nome);eliminati=daImportare.eliminati||[];salvaElim();if(daImportare.catalogo){extra=daImportare.catalogo;salvaExtra();}daImportare=null;salva();disegna();statoBk();promemoria();
   $('bkMsg').textContent=`Importati ${n} articoli. I dati di prima sono salvati nella copia automatica qui sotto.`;
 });
 $('bkRipristina').addEventListener('click',()=>{
@@ -700,6 +718,74 @@ $('bkRipristina').addEventListener('click',()=>{
   disegna();statoBk();promemoria();$('bkMsg').textContent=`Ripristinati ${dati.length} articoli dalla copia automatica.`;
 });
 
+// ================= SINCRONIZZAZIONE TRA DISPOSITIVI (tramite file in iCloud Drive) =================
+// Ogni articolo ha l'ora dell'ultima modifica (agg). Unendo due file: gli acquisti si sommano senza doppioni,
+// per quantità, note e nome vince la modifica più recente; gli articoli eliminati restano eliminati.
+const KEY_ELIM='ga-eliminati';
+let eliminati=[];try{eliminati=JSON.parse(localStorage.getItem(KEY_ELIM))||[]}catch(e){}
+const salvaElim=()=>{try{localStorage.setItem(KEY_ELIM,JSON.stringify(eliminati.slice(-500)))}catch(e){}};
+const adesso=()=>new Date().toISOString();
+const chiaveAcq=x=>[x.p,x.data||'',x.f||'',x.ivaAgg==null?'':x.ivaAgg].join('|');
+function unisci(fileDati){
+  const rem=fileDati.articoli,remElim=fileDati.eliminati||[];let nuovi=0,aggiornati=0,tolti=0;
+  for(const r of rem){
+    const tomba=eliminati.find(t=>t.id===r.id||(t.nome&&stesso(t.nome,r.nome)));
+    if(tomba&&tomba.t>=(r.agg||''))continue; // eliminato qui dopo l'ultima modifica di là
+    const l=dati.find(x=>x.id===r.id)||dati.find(x=>stesso(x.nome,r.nome));
+    if(!l){dati.push(JSON.parse(JSON.stringify(r)));nuovi++;continue;}
+    const prima=JSON.stringify(l);
+    l.tolti=[...new Set([...(l.tolti||[]),...(r.tolti||[])])];
+    const acq=[...l.prezzi];for(const x of r.prezzi)if(!acq.some(y=>chiaveAcq(y)===chiaveAcq(x)))acq.push(x);
+    l.prezzi=acq.filter(x=>!l.tolti.includes(chiaveAcq(x)));
+    if((r.agg||'')>(l.agg||'')){Object.assign(l,{cat:r.cat,mat:r.mat,unita:r.unita,note:r.note,posti:JSON.parse(JSON.stringify(r.posti)),agg:r.agg});}
+    if(JSON.stringify(l)!==prima)aggiornati++;
+  }
+  for(const t of remElim){
+    const l=dati.find(x=>x.id===t.id)||(t.nome?dati.find(x=>stesso(x.nome,t.nome)):null);
+    if(l&&(l.agg||'')<=t.t){dati=dati.filter(x=>x!==l);tolti++;}
+    if(!eliminati.some(x=>x.id===t.id))eliminati.push(t);
+  }
+  // catalogo e fornitori aggiunti sull'altro dispositivo
+  const c=fileDati.catalogo;
+  if(c){for(const [k,v] of Object.entries(c.mat||{})){extra.mat[k]=extra.mat[k]||[];for(const x of v)aggiungi(extra.mat[k],x);}
+    for(const [k,v] of Object.entries(c.opz||{})){extra.opz[k]=extra.opz[k]||[];for(const x of v)aggiungi(extra.opz[k],x);}
+    extra.forn=extra.forn||[];for(const x of (c.forn||[]))aggiungi(extra.forn,x);}
+  return {nuovi,aggiornati,tolti};
+}
+let daUnire=null;
+$('syUnisci').addEventListener('click',()=>{$('syFile').value='';$('syFile').click();});
+$('syFile').addEventListener('change',()=>{
+  const f=$('syFile').files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{let o=null;try{o=JSON.parse(rd.result)}catch(e){}const v=o&&valida(o);
+    if(!v){$('syMsg').textContent='Questo file non è un backup del Magazzino. Non ho cambiato niente.';return;}
+    daUnire=v;$('syConfTxt').textContent=`Il file "${f.name}"${v.data?' (del '+dataOra(v.data)+')':''} ha ${v.articoli.length} articoli. Li unisco ai ${dati.length} che hai qui: niente viene sostituito, prima faccio una copia automatica.`;
+    $('syConferma').classList.remove('nascosto');$('syMsg').textContent='';$('syConferma').scrollIntoView({block:'center'});};
+  rd.readAsText(f);
+});
+$('syNo').addEventListener('click',()=>{daUnire=null;$('syConferma').classList.add('nascosto');$('syMsg').textContent='Unione annullata: niente è cambiato.';});
+$('sySi').addEventListener('click',()=>{
+  if(!daUnire)return;
+  if(!lsSet(KEY_COPIA,JSON.stringify({data:adesso(),articoli:dati}))){$('syMsg').textContent='Non riesco a fare la copia di sicurezza. Unione annullata.';return;}
+  const r=unisci(daUnire);daUnire=null;salva();salvaExtra();salvaElim();disegna();statoBk();
+  $('syConferma').classList.add('nascosto');
+  $('syMsg').textContent=`Fatto: ${r.nuovi} nuovi, ${r.aggiornati} aggiornati${r.tolti?', '+r.tolti+' eliminati':''}. Ora tocca "Esporta backup" e salvalo in Backup Magazzino, così l'altro dispositivo riceve anche i dati di questo.`;
+});
+
+// --- passo 8: app installata o Safari? memoria permanente ---
+const installata=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+if(!installata&&/github\.io$/.test(location.hostname))$('avvisoSafari').classList.remove('nascosto');
+let memoria='sconosciuta';
+async function chiediMemoria(){
+  try{if(!navigator.storage||!navigator.storage.persist){memoria='non disponibile';return;}
+    let ok=await navigator.storage.persisted();
+    if(!ok)ok=await navigator.storage.persist();
+    memoria=ok?'attiva':'non concessa';
+  }catch(e){memoria='non disponibile';}
+}
+chiediMemoria();
+const testoMemoria=()=>memoria==='attiva'?'Memoria permanente: attiva. Il telefono non cancella i dati da solo.'
+  :installata?`Memoria permanente: ${memoria}. Fai comunque il backup ogni settimana.`
+  :'Memoria permanente: si attiva usando l\'app installata sulla Home.';
 // striscia "versione di prova" solo fuori dall'indirizzo definitivo
 if(!/github\.io$/.test(location.hostname))$('prova').classList.remove('nascosto');
 // service worker: salva l'app per l'uso senza internet (solo sull'indirizzo definitivo)

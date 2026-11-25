@@ -1,6 +1,6 @@
 // Service worker MAGAZZINOW: salva l'app nel telefono per usarla senza internet.
 // Ad ogni nuova versione dell'app cambia il numero qui sotto.
-const VERSIONE = 'magazzino-v5';
+const VERSIONE = 'magazzino-v7';
 const FILE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
