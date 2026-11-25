@@ -100,7 +100,6 @@ select{font:inherit;font-size:17px;width:100%;min-height:50px;padding:0 10px;bor
 .avviso{display:block;width:100%;border:0;border-radius:0;text-align:left;font-weight:700;font-size:15px;padding:10px max(4vw,16px);min-height:44px}
 .avviso.giallo{background:var(--y);color:#222}.avviso.rosso{background:var(--red);color:#fff}
 .largo{width:100%;margin-top:10px}
-#avvisoSafari{font-weight:500;line-height:1.4}#avvisoSafari summary{font-weight:700;margin-top:6px;cursor:pointer;min-height:32px}#avvisoSafari ol{margin:6px 0 4px;padding-left:22px}
 .esito{font-size:16px;font-weight:700;color:var(--ok);margin:14px 0 0;min-height:4px}
 #catBox{margin-top:4px}
 .nuovo{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:8px}
@@ -126,11 +125,6 @@ select{font:inherit;font-size:17px;width:100%;min-height:50px;padding:0 10px;bor
 <button type="button" class="imp" id="apriBk">Backup</button></header>
 <div class="test nascosto" id="prova">Versione di prova: inserisci solo dati finti.</div>
 <button type="button" id="avvisoBk" class="avviso nascosto"></button>
-<div id="avvisoSafari" class="avviso giallo nascosto" role="status">
-  <b>Stai usando l'app da Safari.</b> Qui i dati sono separati dall'app sulla Home e Safari può cancellarli.
-  <details><summary>Come installarla</summary>
-  <ol><li>Tocca <b>Condividi</b> (il quadrato con la freccia in su).</li><li>Scegli <b>Aggiungi alla schermata Home</b> → <b>Aggiungi</b>.</li><li>Apri <b>MAGAZZINOW</b> dall'icona sulla Home e usa sempre quella.</li><li>Se hai già dei dati qui: <b>Backup → Esporta</b> qui, poi <b>Backup → Importa</b> nell'app installata.</li></ol></details>
-</div>
 <div class="barra">
   <div class="cerca"><input id="cerca" type="search" placeholder="Cerca articolo, fornitore, cliente" aria-label="Cerca articolo"><button type="button" id="pulisci" class="nascosto" aria-label="Cancella ricerca">×</button></div>
   <nav class="filtri" id="filtriPosto" aria-label="Filtra per posto"></nav>
@@ -145,7 +139,6 @@ select{font:inherit;font-size:17px;width:100%;min-height:50px;padding:0 10px;bor
 <form id="formBk" onsubmit="return false">
   <h3>Backup dei dati</h3>
   <p class="aiuto" id="bkUltimo" style="font-size:16px;color:var(--ink)"></p>
-  <p class="aiuto" id="bkMemoria"></p>
   <div class="sez">ESPORTA</div>
   <p class="aiuto">Crea un file con tutti i tuoi articoli, quantità e prezzi. Salvalo in iCloud Drive (app File) o mandalo alla tua mail.</p>
   <button type="button" class="salva largo" id="bkEsporta">Esporta backup</button>
@@ -641,7 +634,6 @@ function statoBk(){
   $('bkCopia').classList.toggle('nascosto',!info);
   if(info)$('bkCopiaTxt').textContent=`Copia automatica dei dati di prima dell'ultima importazione: ${info.articoli.length} articoli, del ${dataOra(info.data)}.`;
   $('bkMsg').textContent='';$('bkConferma').classList.add('nascosto');
-  $('bkMemoria').textContent=testoMemoria();
 }
 $('apriBk').addEventListener('click',()=>{statoBk();$('veloBk').classList.add('on');$('formBk').scrollTop=0;});
 $('avvisoBk').addEventListener('click',()=>$('apriBk').click());
@@ -708,21 +700,6 @@ $('bkRipristina').addEventListener('click',()=>{
   disegna();statoBk();promemoria();$('bkMsg').textContent=`Ripristinati ${dati.length} articoli dalla copia automatica.`;
 });
 
-// --- passo 8: app installata o Safari? memoria permanente ---
-const installata=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
-if(!installata&&/github\.io$/.test(location.hostname))$('avvisoSafari').classList.remove('nascosto');
-let memoria='sconosciuta';
-async function chiediMemoria(){
-  try{if(!navigator.storage||!navigator.storage.persist){memoria='non disponibile';return;}
-    let ok=await navigator.storage.persisted();
-    if(!ok)ok=await navigator.storage.persist();
-    memoria=ok?'attiva':'non concessa';
-  }catch(e){memoria='non disponibile';}
-}
-chiediMemoria();
-const testoMemoria=()=>memoria==='attiva'?'Memoria permanente: attiva. Il telefono non cancella i dati da solo.'
-  :installata?`Memoria permanente: ${memoria}. Fai comunque il backup ogni settimana.`
-  :'Memoria permanente: si attiva usando l\'app installata sulla Home.';
 // striscia "versione di prova" solo fuori dall'indirizzo definitivo
 if(!/github\.io$/.test(location.hostname))$('prova').classList.remove('nascosto');
 // service worker: salva l'app per l'uso senza internet (solo sull'indirizzo definitivo)
